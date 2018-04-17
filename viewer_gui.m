@@ -22,7 +22,7 @@ function varargout = viewer_gui(varargin)
 
 % Edit the above text to modify the response to help viewer_gui
 
-% Last Modified by GUIDE v2.5 17-Apr-2018 01:41:05
+% Last Modified by GUIDE v2.5 17-Apr-2018 06:14:56
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -54,14 +54,14 @@ function viewer_gui_OpeningFcn(hObject, eventdata, handles, varargin)
 handles.output = hObject;
 guidata(hObject, handles);
 if length(varargin) ~= 4
-    error('Wrong number of parameters - autoprobe dir, image dir, save dir')
+    error('Wrong number of parameters - autoprobe dir, imshow dir, save dir')
 end
-global list image_list num n_image pos pos_current save_dir sel image_dir
+global list imshow_list num n_imshow pos pos_current save_dir sel imshow_dir
 dir = varargin{2};
-image_dir = varargin{3};
+imshow_dir = varargin{3};
 save_dir = varargin{4};
 
-if exist(dir,'file') == 0 || exist(image_dir,'dir') == 0 || exist(save_dir,'dir')== 0
+if exist(dir,'file') == 0 || exist(imshow_dir,'dir') == 0 || exist(save_dir,'dir')== 0
     error('At least one of the folders does not exist')
 end
 
@@ -77,7 +77,7 @@ end
 fns = {};
 
 [save_dir, ~, ~] = fileparts(strcat(save_dir, '/'));
-[image_dir, ~, ~] = fileparts(strcat(image_dir, '/'));
+[imshow_dir, ~, ~] = fileparts(strcat(imshow_dir, '/'));
 
 list = [];
 num = 0;
@@ -97,40 +97,40 @@ list = list(5:end,:);
 fns = fns(5:end);
 num = num-4;
 
-%cd(image_dir)
-image_list = ls('-1','-c',strcat(image_dir,'*.tif'));
-image_list = splitlines(image_list);
-image_list = image_list(1:end-1);
+%cd(imshow_dir)
+imshow_list = ls('-1','-c',strcat(imshow_dir,'*.tif'));
+imshow_list = splitlines(imshow_list);
+imshow_list = imshow_list(1:end-1);
 
-[n_image,~] = size(image_list);
-image_index = zeros(1,n_image);
-for i = 1:n_image
-    [~,t,~] = fileparts(image_list{i});
-    image_index(i) = str2double(t(end-2:end));
+[n_imshow,~] = size(imshow_list);
+imshow_index = zeros(1,n_imshow);
+for i = 1:n_imshow
+    [~,t,~] = fileparts(imshow_list{i});
+    imshow_index(i) = str2double(t(end-2:end));
 end
-[~,image_index] = sort(image_index);
-image_list = image_list(image_index);
+[~,imshow_index] = sort(imshow_index);
+imshow_list = imshow_list(imshow_index);
 
-handles.sbar.Max = n_image;
+handles.sbar.Max = n_imshow;
 handles.sbar.Min = 1;
 
-handles.sbar.SliderStep = [1/(n_image-1) 1/(n_image-1)];
+handles.sbar.SliderStep = [1/(n_imshow-1) 1/(n_imshow-1)];
 handles.lbox.String = fns;
 pos_current = 1;
-if exist(strcat(image_dir,'/','result.mat'),'file') == 2
-    load(strcat(image_dir,'/','result.mat'));
+if exist(strcat(imshow_dir,'/','result.mat'),'file') == 2
+    load(strcat(imshow_dir,'/','result.mat'));
     pos = pos;
     sel = sel;
-    loadImage(handles,pos_current);
+    loadimshow(handles,pos_current);
 else
 pos = zeros(1,num);
 pos = reposition(pos, 1, 0);
 sel = zeros(1,num);
 position = (list(1,1)-2)*4 + list(1,2) + 1;
-handles.txt_fn.String = image_list{position};
+handles.txt_fn.String = imshow_list{position};
 handles.sbar.Value = position;
 handles.txt_ct.String = getStrID(list(1,:));
-image(imread(image_list{position}));
+imshow(imread(imshow_list{position}));
 nx = length(find(sel==1));
 str = strcat('Selected: ',num2str(nx),'\n','Current: ',num2str(pos_current),' / ',num2str(length(sel)));
 str = compose(str);
@@ -166,11 +166,11 @@ varargout{1} = handles.output;
 % --- Executes on slider movement.
 function sbar_Callback(hObject, eventdata, handles)
 
-global image_list
+global imshow_list
 val = round(hObject.Value);
 hObject.Value = val;
-image(imread(image_list{val}))
-handles.txt_fn.String = image_list{val};
+imshow(imread(imshow_list{val}))
+handles.txt_fn.String = imshow_list{val};
 handles.chk_tmp.Enable = 'on';
 
 
@@ -194,11 +194,11 @@ fclose(fid);
 
 % --- Executes on selection change in lbox.
 function lbox_Callback(hObject, eventdata, handles)
-global pos_current image_dir pos sel save_dir list
+global pos_current imshow_dir pos sel save_dir list
 if updatePos(handles,pos_current)
     pos_current = handles.lbox.Value;
-    loadImage(handles,pos_current);
-    save(strcat(image_dir,'/result.mat'),'pos','sel')
+    loadimshow(handles,pos_current);
+    save(strcat(imshow_dir,'/result.mat'),'pos','sel')
     csvwriteHelper(save_dir, sel, list)
 else
     handles.lbox.Value = pos_current;
@@ -235,16 +235,16 @@ function chk_tmp_Callback(hObject, eventdata, handles)
 
 % --- Executes on button press in btn_bkwd.
 function btn_bkwd_Callback(hObject, eventdata, handles)
-global pos_current pos sel image_dir save_dir list
+global pos_current pos sel imshow_dir save_dir list
 %pos_current = handles.lbox.Value;
 if (pos_current == 1) 
     return
 end
 if updatePos(handles,pos_current)
     pos_current = pos_current - 1;
-    loadImage(handles,pos_current);
+    loadimshow(handles,pos_current);
 end
-save(strcat(image_dir,'/result.mat'),'pos','sel')
+save(strcat(imshow_dir,'/result.mat'),'pos','sel')
 csvwriteHelper(save_dir,sel,list)
 
 
@@ -252,26 +252,26 @@ csvwriteHelper(save_dir,sel,list)
 
 % --- Executes on button press in btn_fwd.
 function btn_fwd_Callback(hObject, eventdata, handles)
-global num pos_current pos sel image_dir save_dir list
+global num pos_current pos sel imshow_dir save_dir list
 %pos_current = handles.lbox.Value;
 if (pos_current == num) 
     return
 end
 if updatePos(handles,pos_current)
     pos_current = pos_current + 1;
-    loadImage(handles,pos_current);
+    loadimshow(handles,pos_current);
 end
-save(strcat(image_dir,'/result.mat'),'pos','sel')
+save(strcat(imshow_dir,'/result.mat'),'pos','sel')
 csvwriteHelper(save_dir,sel,list)
 
 % --- Executes on button press in chk_sel.
 function chk_sel_Callback(hObject, eventdata, handles)
     str = char(handles.txt_ct.String);
     str = strcat(str(1,:),str(2,:));
-    global image_list pos pos_current save_dir sel list image_dir
+    global imshow_list pos pos_current save_dir sel list imshow_dir
     sel(pos_current) = handles.chk_sel.Value;
-    [~,image_name,~] = fileparts(image_list{pos(pos_current)});
-    save_fn = strcat(save_dir,'/',image_name(1:end-3),'_',str,'.tif');
+    [~,imshow_name,~] = fileparts(imshow_list{pos(pos_current)});
+    save_fn = strcat(save_dir,'/',imshow_name(1:end-3),'_',str,'.tif');
 if handles.chk_sel.Value == 1
     copyfile(handles.txt_fn.String,save_fn)
     
@@ -282,7 +282,7 @@ nx = length(find(sel==1));
 str = strcat('Selected: ',num2str(nx),'\n','Current: ',num2str(pos_current),' / ',num2str(length(sel)));
 str = compose(str);
 handles.txt_status.String = str;
-save(strcat(image_dir,'/result.mat'),'pos','sel')
+save(strcat(imshow_dir,'/result.mat'),'pos','sel')
 csvwriteHelper(save_dir,sel,list)
 
     
@@ -297,10 +297,10 @@ global list
 p = (list(index,1)-2)*4 + list(index,2) + 1;
 
 function r = reposition(arr, start_pos, offset)
-global n_image
+global n_imshow
 r = arr;
 for i = start_pos:length(arr)
-    r(i) = min(getStdPos(i) + offset,n_image);
+    r(i) = min(getStdPos(i) + offset,n_imshow);
 end
 
 function str = getStrID(p)
@@ -324,14 +324,14 @@ if pos(pos_current) ~= p_t
 end
 r = true;
  
-function loadImage(handles, pos_current)
-global pos image_list list sel
+function loadimshow(handles, pos_current)
+global pos imshow_list list sel
 handles.chk_tmp.Enable = 'off';
 handles.chk_tmp.Value = 0;
 handles.chk_sel.Value = 0;
 handles.lbox.Value = pos_current;
-image(imread(image_list{pos(pos_current)}))
-handles.txt_fn.String = image_list{pos(pos_current)};
+imshow(imread(imshow_list{pos(pos_current)}))
+handles.txt_fn.String = imshow_list{pos(pos_current)};
 handles.sbar.Value = pos(pos_current);
 handles.txt_ct.String = getStrID(list(pos_current,:));
 handles.chk_sel.Value = sel(pos_current);
@@ -343,7 +343,7 @@ handles.txt_status.String = str;
 
 % --- Executes on button press in btn_reset.
 function btn_reset_Callback(hObject, eventdata, handles)
-global image_list list pos_current
+global imshow_list list pos_current
 handles.chk_tmp.Value = 0;
 handles.chk_sel.Value = 0;
 %pos_current = handles.lbox.Value;
@@ -352,8 +352,8 @@ if getStdPos(pos_current) == handles.sbar.Value
 else
     handles.chk_tmp.Enable = 'on';
 end
-image(imread(image_list{getStdPos(pos_current)}))
-handles.txt_fn.String = image_list{getStdPos(pos_current)};
+imshow(imread(imshow_list{getStdPos(pos_current)}))
+handles.txt_fn.String = imshow_list{getStdPos(pos_current)};
 handles.sbar.Value = getStdPos(pos_current);
 handles.txt_ct.String = getStrID(list(pos_current,:));
 % hObject    handle to btn_reset (see GCBO)
@@ -363,7 +363,7 @@ handles.txt_ct.String = getStrID(list(pos_current,:));
 
 % --- Executes on button press in btn_reload.
 function btn_reload_Callback(hObject, eventdata, handles)
-loadImage(handles,handles.lbox.Value);
+loadimshow(handles,handles.lbox.Value);
 % hObject    handle to btn_reload (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -386,6 +386,11 @@ function figure1_WindowKeyPressFcn(hObject, eventdata, handles)
     elseif strcmp(eventdata.Key, 'downarrow') == 1
         btn_fwd_Callback(hObject, eventdata, handles)
     end
+    if (strcmp(eventdata.Key, 'shift') == 1)
+        global imshow_list pos pos_current
+        I = imread(imshow_list{pos(pos_current)});
+        imshow(edge(rgb2gray(I),'sobel'))
+    end
 % hObject    handle to figure1 (see GCBO)
 % eventdata  structure with the following fields (see MATLAB.UI.FIGURE)
 %	Key: name of the key that was pressed, in lower case
@@ -399,3 +404,25 @@ function figure1_SizeChangedFcn(hObject, eventdata, handles)
 % hObject    handle to figure1 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+
+% --- Executes on mouse press over axes background.
+function img_dis_ButtonDownFcn(hObject, eventdata, handles)
+% hObject    handle to img_dis (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --- Executes on key release with focus on figure1 or any of its controls.
+function figure1_WindowKeyReleaseFcn(hObject, eventdata, handles)
+% hObject    handle to figure1 (see GCBO)
+% eventdata  structure with the following fields (see MATLAB.UI.FIGURE)
+%	Key: name of the key that was released, in lower case
+%	Character: character interpretation of the key(s) that was released
+%	Modifier: name(s) of the modifier key(s) (i.e., control, shift) released
+% handles    structure with handles and user data (see GUIDATA)
+    if (strcmp(eventdata.Key, 'shift') == 1)
+        global imshow_list pos pos_current
+        I = imread(imshow_list{pos(pos_current)});
+        imshow(I)
+    end
