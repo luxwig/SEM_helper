@@ -182,14 +182,24 @@ if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColo
     set(hObject,'BackgroundColor',[.9 .9 .9]);
 end
 
+function csvwriteHelper(dir,sel,list)
+str = strcat(dir,'/result.csv');
+index = find(sel == 1);
+fid = fopen(str, 'w+') ;
+for i = index
+    fprintf(fid, '%d,%s\n', list(i,1),char(list(i,2)+'A')) ;
+end
+fclose(fid);
+
 
 % --- Executes on selection change in lbox.
 function lbox_Callback(hObject, eventdata, handles)
-global pos_current image_dir pos sel
+global pos_current image_dir pos sel save_dir list
 if updatePos(handles,pos_current)
     pos_current = handles.lbox.Value;
     loadImage(handles,pos_current);
     save(strcat(image_dir,'/result.mat'),'pos','sel')
+    csvwriteHelper(save_dir, sel, list)
 else
     handles.lbox.Value = pos_current;
 end
@@ -225,7 +235,7 @@ function chk_tmp_Callback(hObject, eventdata, handles)
 
 % --- Executes on button press in btn_bkwd.
 function btn_bkwd_Callback(hObject, eventdata, handles)
-global pos_current pos sel image_dir
+global pos_current pos sel image_dir save_dir list
 %pos_current = handles.lbox.Value;
 if (pos_current == 1) 
     return
@@ -235,14 +245,14 @@ if updatePos(handles,pos_current)
     loadImage(handles,pos_current);
 end
 save(strcat(image_dir,'/result.mat'),'pos','sel')
-
+csvwriteHelper(save_dir,sel,list)
 
 
 
 
 % --- Executes on button press in btn_fwd.
 function btn_fwd_Callback(hObject, eventdata, handles)
-global num pos_current pos sel image_dir
+global num pos_current pos sel image_dir save_dir list
 %pos_current = handles.lbox.Value;
 if (pos_current == num) 
     return
@@ -252,12 +262,13 @@ if updatePos(handles,pos_current)
     loadImage(handles,pos_current);
 end
 save(strcat(image_dir,'/result.mat'),'pos','sel')
+csvwriteHelper(save_dir,sel,list)
 
 % --- Executes on button press in chk_sel.
 function chk_sel_Callback(hObject, eventdata, handles)
     str = char(handles.txt_ct.String);
     str = strcat(str(1,:),str(2,:));
-    global image_list pos pos_current save_dir sel
+    global image_list pos pos_current save_dir sel list image_dir
     sel(pos_current) = handles.chk_sel.Value;
     [~,image_name,~] = fileparts(image_list{pos(pos_current)});
     save_fn = strcat(save_dir,'/',image_name(1:end-3),'_',str,'.tif');
@@ -271,6 +282,9 @@ nx = length(find(sel==1));
 str = strcat('Selected: ',num2str(nx),'\n','Current: ',num2str(pos_current),' / ',num2str(length(sel)));
 str = compose(str);
 handles.txt_status.String = str;
+save(strcat(image_dir,'/result.mat'),'pos','sel')
+csvwriteHelper(save_dir,sel,list)
+
     
 % hObject    handle to chk_sel (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
