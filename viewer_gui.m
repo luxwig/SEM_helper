@@ -51,13 +51,15 @@ function viewer_gui_OpeningFcn(hObject, eventdata, handles, varargin)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to viewer_gui (see VARARGIN)
-if length(varargin) ~= 3
+handles.output = hObject;
+guidata(hObject, handles);
+if length(varargin) ~= 4
     error('Wrong number of parameters - autoprobe dir, image dir, save dir')
 end
-global list image_list num n_image pos pos_current save_dir
-dir = varargin{1};
-image_dir = varargin{2};
-save_dir = varargin{3};
+global list image_list num n_image pos pos_current save_dir sel image_dir
+dir = varargin{2};
+image_dir = varargin{3};
+save_dir = varargin{4};
 
 if exist(dir,'file') == 0 || exist(image_dir,'dir') == 0 || exist(save_dir,'dir')== 0
     error('At least one of the folders does not exist')
@@ -75,10 +77,12 @@ end
 fns = {};
 
 [save_dir, ~, ~] = fileparts(strcat(save_dir, '/'));
+[image_dir, ~, ~] = fileparts(strcat(image_dir, '/'));
+
 list = [];
 num = 0;
 for i = 1:length(fnames)
-    [~,fnn,] = fileparts(fnames{i});
+    [~,fnn,~] = fileparts(fnames{i});
     if  ~isempty(str2double(fnn(1:end-1))) && ...
         ~isnan(str2double(fnn(1:end-1)))
         num = num + 1;
@@ -93,33 +97,56 @@ list = list(5:end,:);
 fns = fns(5:end);
 num = num-4;
 
-pos = zeros(1,num);
-
-pos = reposition(pos, 1, 0);
-
-
-cd(image_dir)
+%cd(image_dir)
 image_list = ls('-1','-c',strcat(image_dir,'*.tif'));
 image_list = splitlines(image_list);
 image_list = image_list(1:end-1);
 
 [n_image,~] = size(image_list);
+image_index = zeros(1,n_image);
+for i = 1:n_image
+    [~,t,~] = fileparts(image_list{i});
+    image_index(i) = str2double(t(end-2:end));
+end
+[~,image_index] = sort(image_index);
+image_list = image_list(image_index);
 
-handles.output = hObject;
 handles.sbar.Max = n_image;
 handles.sbar.Min = 1;
 
 handles.sbar.SliderStep = [1/(n_image-1) 1/(n_image-1)];
-% Update handles structure
-
-position = (list(1,1)-2)*4 + list(1,2) + 1;
 handles.lbox.String = fns;
+pos_current = 1;
+if exist(strcat(image_dir,'/','result.mat'),'file') == 2
+    load(strcat(image_dir,'/','result.mat'));
+    pos = pos;
+    sel = sel;
+    loadImage(handles,pos_current);
+else
+pos = zeros(1,num);
+pos = reposition(pos, 1, 0);
+sel = zeros(1,num);
+position = (list(1,1)-2)*4 + list(1,2) + 1;
 handles.txt_fn.String = image_list{position};
 handles.sbar.Value = position;
 handles.txt_ct.String = getStrID(list(1,:));
 image(imread(image_list{position}));
-pos_current = 1;
-guidata(hObject, handles);
+nx = length(find(sel==1));
+str = strcat('Selected: ',num2str(nx),'\n','Current: ',num2str(pos_current),' / ',num2str(length(sel)));
+str = compose(str);
+handles.txt_status.String = str;
+end 
+
+
+
+
+
+
+
+
+% Update handles structure
+
+
 
 % UIWAIT makes viewer_gui wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
@@ -158,10 +185,11 @@ end
 
 % --- Executes on selection change in lbox.
 function lbox_Callback(hObject, eventdata, handles)
-global pos_current
+global pos_current image_dir pos sel
 if updatePos(handles,pos_current)
     pos_current = handles.lbox.Value;
     loadImage(handles,pos_current);
+    save(strcat(image_dir,'/result.mat'),'pos','sel')
 else
     handles.lbox.Value = pos_current;
 end
@@ -197,7 +225,7 @@ function chk_tmp_Callback(hObject, eventdata, handles)
 
 % --- Executes on button press in btn_bkwd.
 function btn_bkwd_Callback(hObject, eventdata, handles)
-global pos_current
+global pos_current pos sel image_dir
 %pos_current = handles.lbox.Value;
 if (pos_current == 1) 
     return
@@ -206,13 +234,15 @@ if updatePos(handles,pos_current)
     pos_current = pos_current - 1;
     loadImage(handles,pos_current);
 end
+save(strcat(image_dir,'/result.mat'),'pos','sel')
+
 
 
 
 
 % --- Executes on button press in btn_fwd.
 function btn_fwd_Callback(hObject, eventdata, handles)
-global num pos_current
+global num pos_current pos sel image_dir
 %pos_current = handles.lbox.Value;
 if (pos_current == num) 
     return
@@ -221,13 +251,14 @@ if updatePos(handles,pos_current)
     pos_current = pos_current + 1;
     loadImage(handles,pos_current);
 end
-
+save(strcat(image_dir,'/result.mat'),'pos','sel')
 
 % --- Executes on button press in chk_sel.
 function chk_sel_Callback(hObject, eventdata, handles)
-    str = handles.txt_ct.String';
-    str = str(1:end);
-    global image_list pos pos_current save_dir
+    str = char(handles.txt_ct.String);
+    str = strcat(str(1,:),str(2,:));
+    global image_list pos pos_current save_dir sel
+    sel(pos_current) = handles.chk_sel.Value;
     [~,image_name,~] = fileparts(image_list{pos(pos_current)});
     save_fn = strcat(save_dir,'/',image_name(1:end-3),'_',str,'.tif');
 if handles.chk_sel.Value == 1
@@ -236,6 +267,10 @@ if handles.chk_sel.Value == 1
 elseif exist(save_fn, 'file') == 2 
     delete(save_fn);
 end
+nx = length(find(sel==1));
+str = strcat('Selected: ',num2str(nx),'\n','Current: ',num2str(pos_current),' / ',num2str(length(sel)));
+str = compose(str);
+handles.txt_status.String = str;
     
 % hObject    handle to chk_sel (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -263,7 +298,7 @@ global pos num
 p_t = handles.sbar.Value;
 if pos(pos_current) ~= p_t
     answer = questdlg('Position has changed. Confirm?', 'Reposition Warning','Yes', 'No', 'No');
-    if strcmp(answer, 'No') == 1
+    if strcmp(answer, 'Yes') == 0
         r = false;
         return
     end
@@ -276,7 +311,7 @@ end
 r = true;
  
 function loadImage(handles, pos_current)
-global pos image_list list
+global pos image_list list sel
 handles.chk_tmp.Enable = 'off';
 handles.chk_tmp.Value = 0;
 handles.chk_sel.Value = 0;
@@ -285,11 +320,16 @@ image(imread(image_list{pos(pos_current)}))
 handles.txt_fn.String = image_list{pos(pos_current)};
 handles.sbar.Value = pos(pos_current);
 handles.txt_ct.String = getStrID(list(pos_current,:));
+handles.chk_sel.Value = sel(pos_current);
+nx = length(find(sel==1));
+str = strcat('Selected: ',num2str(nx),'\n','Current: ',num2str(pos_current),' / ',num2str(length(sel)));
+str = compose(str);
+handles.txt_status.String = str;
 
 
 % --- Executes on button press in btn_reset.
 function btn_reset_Callback(hObject, eventdata, handles)
-global pos image_list list pos_current
+global image_list list pos_current
 handles.chk_tmp.Value = 0;
 handles.chk_sel.Value = 0;
 %pos_current = handles.lbox.Value;
