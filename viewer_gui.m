@@ -53,6 +53,7 @@ function viewer_gui_OpeningFcn(hObject, eventdata, handles, varargin)
 % varargin   command line arguments to viewer_gui (see VARARGIN)
 handles.output = hObject;
 guidata(hObject, handles);
+figure(handles.figure1);
 if length(varargin) ~= 4
     error('Wrong number of parameters - autoprobe dir, imshow dir, save dir')
 end
@@ -76,8 +77,12 @@ else
 end
 fns = {};
 
-[save_dir, ~, ~] = fileparts(strcat(save_dir, '/'));
-[imshow_dir, ~, ~] = fileparts(strcat(imshow_dir, '/'));
+if (save_dir(end) ~= '/')
+    save_dir = strcat(save_dir,'/');
+end
+if (imshow_dir(end) ~= '/')
+    imshow_dir = strcat(imshow_dir,'/');
+end
 
 list = [];
 num = 0;
