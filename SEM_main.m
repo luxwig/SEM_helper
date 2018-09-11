@@ -83,8 +83,12 @@ function btn_ok_Callback(hObject, eventdata, handles)
     handles.txt_out.BackgroundColor = [0.94 0.94 0.94];
     t = true;
     if exist( handles.txt_zip.String ,'file') == 0
-        handles.txt_zip.BackgroundColor = [1 0.6 0.6];
-        t = false;
+        try 
+            varName = evalin('base', handles.txt_zip.String);
+        catch
+            handles.txt_zip.BackgroundColor = [1 0.6 0.6];
+            t = false;
+        end
     end
     if exist(handles.txt_imgdir.String,'dir') == 0 
         handles.txt_imgdir.BackgroundColor = [1 0.6 0.6];

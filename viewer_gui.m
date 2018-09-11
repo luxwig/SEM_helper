@@ -57,25 +57,43 @@ figure(handles.figure1);
 if length(varargin) ~= 4
     error('Wrong number of parameters - autoprobe dir, imshow dir, save dir')
 end
-global list imshow_list num n_imshow pos pos_current save_dir sel imshow_dir
+global list imshow_list num n_imshow pos pos_current save_dir sel imshow_dir csv_dir
 dir = varargin{2};
+csv_dir = dir;
 imshow_dir = varargin{3};
 save_dir = varargin{4};
 
+
 if exist(dir,'file') == 0 || exist(imshow_dir,'dir') == 0 || exist(save_dir,'dir')== 0
-    error('At least one of the folders does not exist')
+    try 
+        fnames = evalin('base', dir);
+    catch
+        error('At least one of the folders does not exist')
+    end
+    [path] = uigetdir(imshow_dir);
+    if (path ~= 0)
+        csv_dir = path;
+    else
+        csv_dir = '';
+        handles.img_i.Visible = 'off';
+    end
 end
+
 
 if exist(dir,'file') == 2
     fnames = unzip(dir,'./~output');
     rmdir('./~output','s')
-else
+elseif exist(dir,'dir') == 7
     fnames = ls(dir);
     fnames = replace(fnames, char(9), ' ');
     fnames = replace(fnames, char(10), ' ');
     fnames = strsplit(fnames,' ');
 end
 fns = {};
+
+if (~isempty(csv_dir) && csv_dir(end) ~= '/')
+            csv_dir = strcat(csv_dir,'/');
+end
 
 if (save_dir(end) ~= '/')
     save_dir = strcat(save_dir,'/');
@@ -135,11 +153,28 @@ position = (list(1,1)-2)*4 + list(1,2) + 1;
 handles.txt_fn.String = imshow_list{position};
 handles.sbar.Value = position;
 handles.txt_ct.String = getStrID(list(1,:));
-imshow(imread(imshow_list{position}));
+imshow(imread(imshow_list{position}), 'parent', handles.img_dis);
 nx = length(find(sel==1));
-str = strcat('Selected: ',num2str(nx),'\n','Current: ',num2str(pos_current),' / ',num2str(length(sel)));
+str = strcat('Selected: ',num2str(nx),'\n','Current: ',num2str(pos_current),'/ ',num2str(length(sel)));
 str = compose(str);
 handles.txt_status.String = str;
+p = list(pos_current,:);
+if ~isempty(csv_dir) 
+    d = strcat(csv_dir,'/', num2str(p(1,1)),p(1,2)+'A','.csv');
+    try
+        csv_in = csvread(d,1,0);
+        handles.txt_i_miss.Visible = 'off';
+        handles.img_i.Visible = 'on';
+        plot(csv_in(:,1),csv_in(:,3)*1e9,'parent', handles.img_i ,'LineWidth', 2);
+        ylabel('I (nA)')
+        title(strcat(num2str(p(1,1)),p(1,2)+'A'))
+    catch
+        cla(handles.img_i)
+        handles.txt_i_miss.String = [d,' MISSING OR DAMAGED'];
+        handles.txt_i_miss.Visible = 'on';
+        handles.img_i.Visible = 'off';
+    end
+end
 end 
 
 
@@ -174,7 +209,7 @@ function sbar_Callback(hObject, eventdata, handles)
 global imshow_list
 val = round(hObject.Value);
 hObject.Value = val;
-imshow(imread(imshow_list{val}))
+imshow(imread(imshow_list{val}), 'parent', handles.img_dis)
 handles.txt_fn.String = imshow_list{val};
 handles.chk_tmp.Enable = 'on';
 
@@ -284,7 +319,7 @@ elseif exist(save_fn, 'file') == 2
     delete(save_fn);
 end
 nx = length(find(sel==1));
-str = strcat('Selected: ',num2str(nx),'\n','Current: ',num2str(pos_current),' / ',num2str(length(sel)));
+str = strcat('Selected: ',num2str(nx),'\n','Current: ',num2str(pos_current),'/ ',num2str(length(sel)));
 str = compose(str);
 handles.txt_status.String = str;
 save(strcat(imshow_dir,'/result.mat'),'pos','sel')
@@ -330,20 +365,37 @@ end
 r = true;
  
 function loadimshow(handles, pos_current)
-global pos imshow_list list sel
+global pos imshow_list list sel csv_dir
 handles.chk_tmp.Enable = 'off';
 handles.chk_tmp.Value = 0;
 handles.chk_sel.Value = 0;
 handles.lbox.Value = pos_current;
-imshow(imread(imshow_list{pos(pos_current)}))
+imshow(imread(imshow_list{pos(pos_current)}), 'parent', handles.img_dis)
 handles.txt_fn.String = imshow_list{pos(pos_current)};
 handles.sbar.Value = pos(pos_current);
 handles.txt_ct.String = getStrID(list(pos_current,:));
 handles.chk_sel.Value = sel(pos_current);
 nx = length(find(sel==1));
-str = strcat('Selected: ',num2str(nx),'\n','Current: ',num2str(pos_current),' / ',num2str(length(sel)));
+str = strcat('Selected: ',num2str(nx),'\n','Current: ',num2str(pos_current),'/ ',num2str(length(sel)));
 str = compose(str);
 handles.txt_status.String = str;
+p = list(pos_current,:);
+if ~isempty(csv_dir) 
+    d = strcat(csv_dir,'/', num2str(p(1,1)),p(1,2)+'A','.csv');
+    try
+        csv_in = csvread(d,1,0);
+        handles.txt_i_miss.Visible = 'off';
+        handles.img_i.Visible = 'on';
+        plot(csv_in(:,1),csv_in(:,3)*1e9,'parent', handles.img_i ,'LineWidth', 2);
+        ylabel('I (nA)')
+        title(strcat(num2str(p(1,1)),p(1,2)+'A'))
+    catch
+        cla(handles.img_i)
+        handles.txt_i_miss.String = [d,' MISSING OR DAMAGED'];
+        handles.txt_i_miss.Visible = 'on';
+        handles.img_i.Visible = 'off';
+    end
+end
 
 
 % --- Executes on button press in btn_reset.
@@ -357,7 +409,7 @@ if getStdPos(pos_current) == handles.sbar.Value
 else
     handles.chk_tmp.Enable = 'on';
 end
-imshow(imread(imshow_list{getStdPos(pos_current)}))
+imshow(imread(imshow_list{getStdPos(pos_current)}), 'parent', handles.img_dis)
 handles.txt_fn.String = imshow_list{getStdPos(pos_current)};
 handles.sbar.Value = getStdPos(pos_current);
 handles.txt_ct.String = getStrID(list(pos_current,:));
@@ -394,7 +446,7 @@ function figure1_WindowKeyPressFcn(hObject, eventdata, handles)
     if (strcmp(eventdata.Key, 'shift') == 1)
         global imshow_list pos pos_current
         I = imread(imshow_list{pos(pos_current)});
-        imshow(edge(rgb2gray(I),'sobel'))
+        imshow(edge(rgb2gray(I),'sobel'), 'parent', handles.img_dis)
     end
 % hObject    handle to figure1 (see GCBO)
 % eventdata  structure with the following fields (see MATLAB.UI.FIGURE)
@@ -429,5 +481,5 @@ function figure1_WindowKeyReleaseFcn(hObject, eventdata, handles)
     if (strcmp(eventdata.Key, 'shift') == 1)
         global imshow_list pos pos_current
         I = imread(imshow_list{pos(pos_current)});
-        imshow(I)
+        imshow(I, 'parent', handles.img_dis)
     end
